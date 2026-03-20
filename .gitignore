@@ -1,0 +1,13 @@
+# Python
+memory_env/
+__pycache__/
+*.pyc
+
+# PyCharm
+.idea/
+
+# Node
+frontend/node_modules/
+
+# Env files
+.env
