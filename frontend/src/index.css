@@ -1,0 +1,163 @@
+@import url('https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&f[]=dm-sans@400,500,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg:         #0E0F14;
+  --surface:    #13151c;
+  --surface2:   #1a1c24;
+  --border:     #252a35;
+  --border2:    #2e3444;
+  --jade:       #00D68F;
+  --jade-dim:   rgba(0,214,143,.12);
+  --cobalt:     #3B82F6;
+  --cobalt-dim: rgba(59,130,246,.12);
+  --ember:      #F97316;
+  --ember-dim:  rgba(249,115,22,.12);
+  --text:       #E8ECF3;
+  --muted:      #64718a;
+  --radius:     14px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
+
+/* GRID BACKGROUND */
+.grid-bg::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,214,143,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,214,143,.035) 1px, transparent 1px);
+  background-size: 44px 44px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* CARD BASE */
+.sv-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: border-color .2s;
+}
+.sv-card:hover { border-color: var(--border2); }
+
+/* INPUT BASE */
+.sv-input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 14px;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  transition: border-color .2s, box-shadow .2s;
+  outline: none;
+}
+.sv-input:focus {
+  border-color: var(--jade);
+  box-shadow: 0 0 0 3px rgba(0,214,143,.1);
+}
+.sv-input::placeholder { color: var(--muted); }
+
+/* BUTTON BASE */
+.sv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border: none;
+  border-radius: 10px;
+  font-family: 'Clash Display', sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: opacity .2s, transform .1s;
+  white-space: nowrap;
+}
+.sv-btn:active { transform: scale(.97); }
+.sv-btn:disabled { opacity: .4; cursor: not-allowed; }
+.sv-btn-jade   { background: var(--jade); color: #0b0e12; }
+.sv-btn-cobalt { background: var(--cobalt); color: #fff; }
+.sv-btn-ember  { background: var(--ember); color: #fff; }
+.sv-btn-ghost  { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.sv-btn:hover:not(:disabled) { opacity: .85; }
+
+/* BADGE */
+.sv-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  padding: 4px 10px;
+  border-radius: 100px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+/* RESPONSE BOX */
+.sv-response {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  min-height: 52px;
+  color: var(--muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.7;
+  transition: border-color .3s, color .3s;
+}
+.sv-response.success { border-color: var(--jade); color: var(--jade); }
+.sv-response.error   { border-color: var(--ember); color: var(--ember); }
+.sv-response.info    { border-color: var(--cobalt); color: var(--cobalt); }
+
+/* SPINNER */
+.sv-spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* SECTION LABEL */
+.section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* GLOW ACCENT LINE */
+.glow-line {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--jade), transparent);
+  opacity: .3;
+  margin: 32px 0;
+}
