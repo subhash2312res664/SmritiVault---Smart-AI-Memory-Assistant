@@ -42,10 +42,13 @@ Smart_Memory_Assistant/
 │
 ├── backend/
 │   ├── app/
+│   │   ├── __init__.py
+│   │   ├── auth.py
+│   │   ├── auth_routes.py
+│   │   ├── database.py
 │   │   ├── main.py
-│   │   ├── routes.py
 │   │   ├── models.py
-│   │   └── database.py
+│   │   └── routes.py
 │   │
 │   ├── requirements.txt
 │   └── .env
