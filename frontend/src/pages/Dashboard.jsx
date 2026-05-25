@@ -1,235 +1,185 @@
-import React, { useEffect, useState } from "react";
-import { useApp } from "../store/AppContext";
-import AddItem from "../components/AddItem";
-import SearchItem from "../components/SearchItem";
-import ItemCard from "../components/ItemCard";
-import toast from "react-hot-toast";
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { allItems } from '../api/index.js'
+import Navbar from '../components/Navbar.jsx'
+import Footer from '../components/Footer.jsx'
+import { ItemIcon } from '../components/ItemIcon.jsx'
+import { Toast, useToast } from '../components/Toast.jsx'
 
-function StatPill({ label, value, accent }) {
-  return (
-    <div
-      style={{
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-        borderRadius: 12,
-        padding: "16px 20px",
-        flex: 1,
-        minWidth: 100,
-      }}
-    >
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "1.5rem", fontWeight: 700, color: accent || "var(--jade)", marginBottom: 4 }}>
-        {value}
-      </div>
-      <div className="section-label">{label}</div>
-    </div>
-  );
-}
-
-function UpdatePanel() {
-  const { updateItemLocation } = useApp();
-  const [name, setName]   = useState("");
-  const [loc, setLoc]     = useState("");
-  const [loading, setL]   = useState(false);
-  const [resp, setResp]   = useState({ msg: "Enter item name and new location.", type: "" });
-
-  async function handleUpdate(e) {
-    e.preventDefault();
-    if (!name.trim() || !loc.trim()) { toast.error("Both fields required!"); return; }
-    setL(true);
-    setResp({ msg: "Updating…", type: "info" });
-    try {
-      await updateItemLocation(name.trim(), loc.trim());
-      setResp({ msg: `✅ "${name}" → "${loc}" updated`, type: "success" });
-      toast.success(`Updated ${name}!`);
-      setName(""); setLoc("");
-    } catch (err) {
-      setResp({ msg: `❌ ${err.message}`, type: "error" });
-      toast.error(err.message);
-    } finally { setL(false); }
-  }
-
-  return (
-    <div className="sv-card" style={{ padding: 24 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-        <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(160,100,255,.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>✏️</div>
-        <span className="section-label">Update Location</span>
-      </div>
-      <form onSubmit={handleUpdate}>
-        <div style={{ marginBottom: 14 }}>
-          <label className="section-label" style={{ display: "block", marginBottom: 6 }}>Item Name</label>
-          <input className="sv-input" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Item to update" />
-        </div>
-        <div style={{ marginBottom: 18 }}>
-          <label className="section-label" style={{ display: "block", marginBottom: 6 }}>New Location</label>
-          <input className="sv-input" type="text" value={loc} onChange={(e) => setLoc(e.target.value)} placeholder="New location" />
-        </div>
-        <button
-          className="sv-btn"
-          type="submit"
-          disabled={loading}
-          style={{ width: "100%", background: "rgba(160,100,255,.9)", color: "#fff" }}
-        >
-          {loading ? <><span className="sv-spinner" /> Updating…</> : <><span>✏️</span> Update</>}
-        </button>
-      </form>
-      <div className={`sv-response ${resp.type}`} style={{ marginTop: 14 }}>{resp.msg}</div>
-    </div>
-  );
+function timeAgo(ts) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  const diff = (Date.now() - d.getTime()) / 1000
+  if (diff < 60)    return 'Logged just now'
+  if (diff < 3600)  return `Logged ${Math.floor(diff/60)}m ago`
+  if (diff < 86400) return 'Logged Today'
+  if (diff < 172800) return 'Logged Yesterday'
+  const days = Math.floor(diff / 86400)
+  if (days < 7) return `Logged ${days} days ago`
+  return `Logged ${Math.floor(days/7)} week${days > 13 ? 's' : ''} ago`
 }
 
 export default function Dashboard() {
-  const { items, loading, fetchAllItems, checkApiHealth, apiStatus } = useApp();
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all");
+  const [items, setItems]   = useState([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const { toast, showToast } = useToast()
+  const navigate = useNavigate()
+
+  // Get name from token
+  const getName = () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) return 'User'
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      return payload.name || 'User'
+    } catch { return 'User' }
+  }
 
   useEffect(() => {
-    checkApiHealth().then((ok) => { if (ok) fetchAllItems(); });
-  }, []);
+    allItems()
+      .then(res => setItems(res.data))
+      .catch(() => showToast('Failed to load items', 'error'))
+      .finally(() => setLoading(false))
+  }, [])
 
-  const filtered = items.filter((item) => {
-    const matchSearch = item.item_name.toLowerCase().includes(search.toLowerCase()) ||
-                        item.location.toLowerCase().includes(search.toLowerCase());
-    return matchSearch;
-  });
+  const handleQuickSearch = () => {
+    if (!search.trim()) return
+    navigate(`/items?search=${encodeURIComponent(search.trim())}`)
+  }
 
-  const recent = items.filter((item) => {
-    const diff = Date.now() - new Date(item.timestamp).getTime();
-    return diff < 86400000; // last 24h
-  });
+  const recent = items.slice(0, 4)
+  const lastActivity = items[0]?.timestamp || null
 
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "36px 24px 80px" }}>
+    <div>
+      <Navbar active="/" />
+      <Toast toast={toast} />
+      <div className="page">
+        <div className="container">
 
-      {/* HERO */}
-      <div style={{ marginBottom: 36, animation: "fadeUp .5s ease both" }}>
-        <div
-          style={{
-            fontFamily: "'Clash Display', sans-serif",
-            fontWeight: 800,
-            fontSize: "clamp(1.8rem, 4vw, 2.8rem)",
-            lineHeight: 1.1,
-            letterSpacing: "-1px",
-            marginBottom: 8,
-          }}
-        >
-          Your Memory,<br />
-          <span style={{ color: "var(--jade)" }}>Digitized.</span>
-        </div>
-        <div style={{ color: "var(--muted)", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.82rem" }}>
-          // SmritiVault · Smart AI Memory Assistant · IIT Patna Group 87
-        </div>
-      </div>
-
-      {/* OFFLINE BANNER */}
-      {apiStatus === "offline" && (
-        <div
-          style={{
-            background: "var(--ember-dim)",
-            border: "1px solid rgba(249,115,22,.3)",
-            borderRadius: 10,
-            padding: "12px 16px",
-            marginBottom: 24,
-            fontFamily: "monospace",
-            fontSize: "0.82rem",
-            color: "var(--ember)",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          ⚠️ Cannot connect to backend API. Make sure FastAPI is running on port 8000.
-          <code style={{ opacity: .7 }}>uvicorn main:app --reload</code>
-        </div>
-      )}
-
-      {/* STATS */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 32, flexWrap: "wrap", animation: "fadeUp .5s .06s ease both", opacity: 0, animationFillMode: "forwards" }}>
-        <StatPill label="Total Items"   value={items.length}  accent="var(--jade)" />
-        <StatPill label="Added Today"   value={recent.length} accent="var(--cobalt)" />
-        <StatPill label="API Status"    value={apiStatus === "online" ? "●" : "○"} accent={apiStatus === "online" ? "var(--jade)" : "var(--ember)"} />
-      </div>
-
-      {/* CRUD GRID */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-          gap: 18,
-          marginBottom: 36,
-        }}
-      >
-        <div style={{ animation: "fadeUp .5s .1s ease both", opacity: 0, animationFillMode: "forwards" }}>
-          <AddItem />
-        </div>
-        <div style={{ animation: "fadeUp .5s .15s ease both", opacity: 0, animationFillMode: "forwards" }}>
-          <SearchItem />
-        </div>
-        <div style={{ animation: "fadeUp .5s .2s ease both", opacity: 0, animationFillMode: "forwards" }}>
-          <UpdatePanel />
-        </div>
-      </div>
-
-      <div className="glow-line" />
-
-      {/* ALL ITEMS */}
-      <div style={{ animation: "fadeUp .5s .25s ease both", opacity: 0, animationFillMode: "forwards" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
-          <div>
-            <div style={{ fontFamily: "'Clash Display', sans-serif", fontWeight: 700, fontSize: "1.2rem", marginBottom: 4 }}>
-              All Items
+          {/* Header */}
+          <div style={s.header}>
+            <div>
+              <h1 style={s.welcome}>Welcome back, {getName().split(' ')[0]}</h1>
+              <p style={{ color: '#6b7280', marginTop: 6 }}>Here's the latest status of your personal archive.</p>
             </div>
-            <div className="section-label">{items.length} item{items.length !== 1 ? "s" : ""} logged</div>
+            <div style={s.headerRight}>
+              <div style={s.searchBar}>
+                <svg width="16" height="16" fill="none" stroke="#9ca3af" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+                </svg>
+                <input style={s.searchInput} placeholder="Quick search..." value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleQuickSearch()} />
+              </div>
+              <button className="btn-outline" onClick={handleQuickSearch}>
+                <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+                </svg>
+                Quick Search
+              </button>
+            </div>
           </div>
 
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <input
-              className="sv-input"
-              style={{ width: 200 }}
-              type="text"
-              placeholder="Filter by name or location…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <button
-              className="sv-btn sv-btn-jade"
-              onClick={fetchAllItems}
-              disabled={loading}
-              style={{ padding: "10px 18px" }}
-            >
-              {loading ? <span className="sv-spinner" /> : "🔄"} Refresh
-            </button>
+          {/* Main grid */}
+          <div style={s.mainGrid}>
+            {/* Stats card */}
+            <div className="card" style={s.statsCard}>
+              <div style={s.statsTitle}>
+                <svg width="18" height="18" fill="none" stroke="#1a6b52" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
+                </svg>
+                <span style={{ fontWeight: 600, color: '#1a6b52' }}>Memory Stats</span>
+              </div>
+              <div style={{ marginBottom: 24 }}>
+                <div style={s.statLabel}>Total Items Logged</div>
+                <div style={s.statNum}>{loading ? '...' : items.length}</div>
+              </div>
+              <div style={{ marginBottom: 24 }}>
+                <div style={s.statLabel}>Last Activity</div>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>
+                  {loading ? '...' : items.length > 0 ? timeAgo(items[0]?.timestamp).replace('Logged ', '') : 'No activity yet'}
+                </div>
+              </div>
+              <hr style={{ border: 'none', borderTop: '1px solid #e5e0da', margin: '0 0 20px' }} />
+              <div>
+                <div style={s.statLabel}>Top Category</div>
+                <span className="tag green" style={{ marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <rect x="2" y="3" width="7" height="7" rx="1"/><rect x="15" y="3" width="7" height="7" rx="1"/>
+                    <rect x="2" y="14" width="7" height="7" rx="1"/><rect x="15" y="14" width="7" height="7" rx="1"/>
+                  </svg>
+                  Manual
+                </span>
+              </div>
+            </div>
+
+            {/* Recent items */}
+            <div style={{ flex: 1 }}>
+              <div style={s.recentHeader}>
+                <h2 style={s.sectionTitle}>Recent Items</h2>
+                <button className="btn-ghost" style={{ color: '#1a6b52', fontWeight: 500 }} onClick={() => navigate('/items')}>
+                  View All →
+                </button>
+              </div>
+
+              {loading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
+                  <span className="spinner dark" />
+                </div>
+              ) : recent.length === 0 ? (
+                <div style={s.empty}>
+                  <p style={{ color: '#9ca3af', marginBottom: 16 }}>No items logged yet.</p>
+                  <button className="btn-primary" onClick={() => navigate('/add')}>+ Log first item</button>
+                </div>
+              ) : (
+                <div style={s.recentGrid}>
+                  {recent.map((item, i) => (
+                    <div key={i} className="card" style={s.recentCard}>
+                      <div style={s.recentCardTop}>
+                        <div>
+                          <h3 style={s.itemName}>{item.item_name}</h3>
+                          <div style={s.itemLoc}>
+                            <svg width="13" height="13" fill="none" stroke="#6b7280" strokeWidth="2" viewBox="0 0 24 24">
+                              <path d="M20 10c0 6-8 13-8 13s-8-7-8-13a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/>
+                            </svg>
+                            {item.location}
+                          </div>
+                        </div>
+                        <ItemIcon name={item.item_name} size={36} />
+                      </div>
+                      <span className="tag" style={{ fontSize: 11 }}>{timeAgo(item.timestamp)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-
-        {loading ? (
-          <div style={{ textAlign: "center", padding: 48, color: "var(--muted)", fontFamily: "monospace" }}>
-            <span className="sv-spinner" style={{ width: 24, height: 24, marginBottom: 12, display: "block", margin: "0 auto 16px" }} />
-            Loading items…
-          </div>
-        ) : filtered.length === 0 ? (
-          <div
-            style={{
-              textAlign: "center",
-              padding: "52px 24px",
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
-              borderRadius: 14,
-              color: "var(--muted)",
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: "0.82rem",
-            }}
-          >
-            <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>{search ? "🔎" : "📭"}</div>
-            {search ? `No items matching "${search}"` : "No items logged yet. Add your first item above!"}
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {filtered.map((item, i) => (
-              <ItemCard key={item._id || item.item_name + i} item={item} index={i} />
-            ))}
-          </div>
-        )}
       </div>
+      <Footer />
     </div>
-  );
+  )
+}
+
+const s = {
+  header:      { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 40, flexWrap: 'wrap', gap: 16 },
+  welcome:     { fontFamily: 'Playfair Display, serif', fontSize: 36, fontWeight: 700 },
+  headerRight: { display: 'flex', alignItems: 'center', gap: 12 },
+  searchBar:   { display: 'flex', alignItems: 'center', gap: 8, background: '#fff', border: '1.5px solid #e5e0da', borderRadius: 8, padding: '8px 14px', minWidth: 220 },
+  searchInput: { border: 'none', background: 'transparent', padding: 0, fontSize: 14, outline: 'none', width: '100%' },
+  mainGrid:    { display: 'flex', gap: 32, alignItems: 'flex-start' },
+  statsCard:   { width: 280, flexShrink: 0, padding: 28 },
+  statsTitle:  { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24 },
+  statLabel:   { fontSize: 12, color: '#6b7280', marginBottom: 4 },
+  statNum:     { fontFamily: 'Playfair Display, serif', fontSize: 52, fontWeight: 700, lineHeight: 1, color: '#1a1a1a' },
+  recentHeader:{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  sectionTitle:{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700 },
+  recentGrid:  { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
+  recentCard:  { padding: 20, cursor: 'default' },
+  recentCardTop:{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
+  itemName:    { fontSize: 17, fontWeight: 600, marginBottom: 6 },
+  itemLoc:     { display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: '#6b7280' },
+  empty:       { textAlign: 'center', padding: '60px 0' },
 }
