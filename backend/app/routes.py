@@ -1,111 +1,145 @@
-from fastapi import APIRouter, HTTPException
-from app.models import ItemLog
+from fastapi import APIRouter, HTTPException, Depends
+from app.models import ItemLog, UpdateItem
 from app.database import items_collection
+from app.auth import get_current_user
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from datetime import datetime, timezone
 
-from datetime import datetime
-from zoneinfo import ZoneInfo
+router = APIRouter(tags=["Items"])
+
+IST = ZoneInfo("Asia/Kolkata")
 
 
-# def get_ist_time():
-#     # Get current time in IST
-#     ist_now = datetime.now(ZoneInfo("Asia/Kolkata"))
-#     # Format as DD/MM/YYYY, HH:MM
-#     # return ist_now.strftime("%d/%m/%Y, %H:%M")
+def ist_now() -> datetime:
+    return datetime.now(IST)
 
-router = APIRouter()
+def format_ist(dt: datetime) -> str:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    ist = dt.astimezone(ZoneInfo("Asia/Kolkata"))
+    return ist.strftime("%d/%m/%Y %I:%M %p IST")
 
-# Home
-@router.get("/")
-def read_root():
-    return {"message": "Smart Memory Assistant API Running 🚀"}
 
-# Save item
-from pydantic import BaseModel
+# ─── Log Item ──────────────────────────────────────────────
 
-class UpdateItem(BaseModel):
-    location: str
+@router.post("/log_item", status_code=201)
+def log_item(item: ItemLog, current_user: dict = Depends(get_current_user)):
+    existing = items_collection.find_one({
+        "item_name": {"$regex": f"^{item.item_name.strip()}$", "$options": "i"},
+        "user_email": current_user["email"],
+    })
 
-@router.post("/log_item")
-def log_item(item: ItemLog):
-    item_dict = item.dict()
+    if existing:
+        # Item exists → auto update location
+        new_time = ist_now()
+        items_collection.update_one(
+            {"_id": existing["_id"]},
+            {"$set": {
+                "location": item.location,
+                "timestamp": new_time,
+            }}
+        )
+        return {
+            "message": f"✅ '{item.item_name}' already existed — location updated!",
+            "location": item.location,
+            "saved_on": format_ist(new_time),
+        }
 
-    if not item_dict.get("timestamp"):
-        item_dict["timestamp"] = datetime.now(ZoneInfo("Asia/Kolkata"))
-
+    # Item does not exist → save new
+    item_dict = item.model_dump()
+    item_dict["timestamp"] = ist_now()
+    item_dict["user_email"] = current_user["email"]
     result = items_collection.insert_one(item_dict)
 
     return {
-        "message": f"{item.item_name} saved successfully",
+        "message": f"✅ '{item.item_name}' saved successfully",
         "id": str(result.inserted_id),
-        "location": item.location
+        "location": item.location,
+        "saved_on": format_ist(item_dict["timestamp"]),
     }
 
-# Search item
+
+# ─── Search Item ───────────────────────────────────────────
+
 @router.get("/search_item/{item_name}")
-def search_item(item_name: str):
+def search_item(item_name: str, current_user: dict = Depends(get_current_user)):
     item = items_collection.find_one(
-        {"item_name": {"$regex": item_name, "$options": "i"}},
-        sort=[("timestamp", -1)]
+        {
+            "item_name": {"$regex": item_name, "$options": "i"},
+            "user_email": current_user["email"],       # only own items
+        },
+        sort=[("timestamp", -1)],
     )
 
     if not item:
-        raise HTTPException(status_code=404, detail="Item not found, Try saving it first.")
+        raise HTTPException(status_code=404, detail="Item not found. Try saving it first.")
 
     return {
         "item_name": item["item_name"],
         "location": item["location"],
-        "saved_on": item["timestamp"],
-        "log_type": item["log_type"]
+        "saved_on": format_ist(item["timestamp"]),
+        "log_type": item["log_type"],
     }
 
 
-# Update item
+# ─── Update Item ───────────────────────────────────────────
+
 @router.put("/update_item/{item_name}")
-def update_item(item_name: str, data: UpdateItem):
-    query = {
-        "item_name": {"$regex": f"^{item_name.strip()}$", "$options": "i"}
-    }
-
+def update_item(
+    item_name: str,
+    data: UpdateItem,
+    current_user: dict = Depends(get_current_user),
+):
+    new_time = ist_now()
     result = items_collection.find_one_and_update(
-        query,
         {
-            "$set": {
-                "location": data.location,
-                "timestamp": datetime.now(ZoneInfo("Asia/Kolkata"))
-            }
+            "item_name": {"$regex": f"^{item_name.strip()}$", "$options": "i"},
+            "user_email": current_user["email"],
         },
-        sort=[("timestamp", -1)]
+        {"$set": {"location": data.location, "timestamp": new_time}},
+        sort=[("timestamp", -1)],
     )
 
     if not result:
-        # show as a standard 404 error in frontend
-        raise HTTPException(status_code=404, detail=f"Item '{item_name}' not found. Try saving it first.")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Item '{item_name}' not found. Try saving it first.",
+        )
 
-    return {
-        "message": f"Success! {item_name} updated to: {data.location}"
-    }
+    return {"message": f"✅ '{item_name}' updated to: {data.location} updated on:{format_ist(new_time)}"}
 
-# Delete item
+
+# ─── Delete Item ───────────────────────────────────────────
+
 @router.delete("/delete_item/{item_name}")
-def delete_item(item_name: str):
+def delete_item(item_name: str, current_user: dict = Depends(get_current_user)):
+    # FIX: was missing user_email filter & anchor regex was inconsistent
     result = items_collection.delete_one(
-        {"item_name": {"$regex": f"^{item_name}$", "$options": "i"}}
+        {
+            "item_name": {"$regex": f"^{item_name.strip()}$", "$options": "i"},
+            "user_email": current_user["email"],
+        }
     )
 
     if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Item not found")
+        raise HTTPException(status_code=404, detail="Item not found.")
 
-    return {"message": "Deleted successfully"}
+    return {"message": f"🗑️ '{item_name}' deleted successfully."}
 
-# List all items
+
+# ─── List All Items ────────────────────────────────────────
+
 @router.get("/all_items")
-def get_all_items():
-    items = list(items_collection.find())
-
-    for item in items:
-        item["_id"] = str(item["_id"])
-
+def get_all_items(current_user: dict = Depends(get_current_user)):
+    items = list(
+        items_collection.find(
+            {"user_email": current_user["email"]},
+            {"_id": 0},   # exclude Mongo _id from response
+        ).sort("timestamp", -1)
+    )
+    for item in items:                                        # ← add this
+        item["timestamp"] = format_ist(item["timestamp"])
     return items
-
