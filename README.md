@@ -54,6 +54,32 @@ Smart_Memory_Assistant/
 │   └── .env
 │
 ├── frontend/
+|   ├── src/
+|   |   ├── api
+|   |   |   └── index.js
+|   |   |
+|   |   ├── components
+|   |   |   ├── Footer.jsx
+|   |   |   ├── ItemIcon.jsx
+|   |   |   ├── Navbar.jsx
+|   |   |   └── Toast.jsx
+|   |   |
+|   |   ├── pages
+|   |   |   ├── AddItem.jsx
+|   |   |   ├── Dashboard.jsx
+|   |   |   ├── Login.jsx
+|   |   |   ├── MyItems.jsx
+|   |   |   ├── Register.jsx
+|   |   |   └── Search.jsx
+|   |   |
+|   |   ├── App.jsx
+|   |   ├── index.css
+|   |   └── main.jsx
+|   | 
+│   ├── index.html
+│   ├── package-lock.json
+│   ├── package.json
+│   └── vite.config.js
 ├── docs/
 ├── .gitignore
 └── README.md
@@ -150,7 +176,7 @@ http://127.0.0.1:8000/docs
 ```id="p9l2xt"
 cd frontend
 npm install
-npm start
+npm run dev
 ```
 
 ---
