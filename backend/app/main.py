@@ -1,23 +1,28 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import router
+from app.auth_routes import auth_router
 
-# Create FastAPI app
-app = FastAPI(title="Smart AI Memory Assistant")
+app = FastAPI(
+    title="Smart AI Memory Assistant",
+    description="Never forget where you put things 🧠",
+    version="1.0.0",
+)
 
-# Enable CORS (important for frontend)
+# CORS — restrict origins in production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # for development (later restrict)
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include all routes
-app.include_router(router)
+# Routers
+app.include_router(auth_router)   # /auth/register, /auth/login
+app.include_router(router)        # /log_item, /search_item, etc.
 
-# Root endpoint
-@app.get("/")
-def read_root():
-    return {"message": "Smart Memory Assistant API is running 🚀"}
+
+@app.get("/", tags=["Health"])
+def health_check():
+    return {"status": "ok", "message": "Smart Memory Assistant API is running 🚀"}
