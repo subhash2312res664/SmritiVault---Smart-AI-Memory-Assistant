@@ -22,6 +22,10 @@ pydantic_core==2.46.4
 pymongo==4.17.0
 python-dotenv==1.2.2
 python-jose==3.5.0
+numpy
+opencv-python
+pillow
+ultralytics
 PyYAML==6.0.3
 rsa==4.9.1
 six==1.17.0

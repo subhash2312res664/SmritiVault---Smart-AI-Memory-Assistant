@@ -8,15 +8,15 @@ load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI")
 
 if not MONGO_URI:
-    raise ValueError("❌ MONGO_URI not found in .env file. Please check your .env setup.")
+    raise ValueError("MONGO_URI not found in .env file. Please check your .env setup.")
 
 try:
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
     # Verify connection is alive
     client.admin.command("ping")
-    print("✅ MongoDB connected successfully!")
+    print("MongoDB connected successfully!")
 except ConnectionFailure as e:
-    raise RuntimeError(f"❌ Could not connect to MongoDB: {e}")
+    raise RuntimeError(f"Could not connect to MongoDB: {e}")
 
 db = client["memory_assistant_db"]
 
