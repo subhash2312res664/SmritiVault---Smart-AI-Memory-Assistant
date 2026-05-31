@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { register, login } from '../api/index.js'
 import { Toast, useToast } from '../components/Toast.jsx'
+import { useIsNarrow } from '../hooks/useMediaQuery.js'
 
 export default function Register() {
   const [form, setForm]       = useState({ name: '', email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const { toast, showToast }  = useToast()
   const navigate              = useNavigate()
+  const isNarrow              = useIsNarrow()
 
   const handleSubmit = async () => {
     if (!form.name || !form.email || !form.password) { showToast('Fill all fields', 'error'); return }
@@ -24,17 +26,17 @@ export default function Register() {
   }
 
   return (
-    <div style={s.page}>
+    <div style={{ ...s.page, ...(isNarrow ? s.pageMobile : {}) }}>
       <Toast toast={toast} />
-      <div style={s.left}>
+      <div style={{ ...s.left, ...(isNarrow ? s.leftMobile : {}) }}>
         <div style={s.leftInner}>
           <div style={s.brand}>SmritiVault</div>
-          <h1 style={s.tagline}>Start remembering<br /><span style={{ color: '#1a6b52' }}>everything.</span></h1>
-          <p style={s.desc}>Join SmritiVault and never lose track of your belongings again.</p>
+          <h1 style={{ ...s.tagline, ...(isNarrow ? s.taglineMobile : {}) }}>Start remembering<br /><span style={{ color: '#1a6b52' }}>everything.</span></h1>
+          {!isNarrow && <p style={s.desc}>Join SmritiVault and never lose track of your belongings again.</p>}
         </div>
       </div>
-      <div style={s.right}>
-        <div style={s.formBox}>
+      <div style={{ ...s.right, ...(isNarrow ? s.rightMobile : {}) }}>
+        <div style={{ ...s.formBox, ...(isNarrow ? s.formBoxMobile : {}) }}>
           <h2 style={s.formTitle}>Create account</h2>
           <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 28 }}>Free forever — no credit card needed</p>
           <div style={{ marginBottom: 14 }}>
@@ -65,13 +67,18 @@ export default function Register() {
 
 const s = {
   page:      { display: 'flex', minHeight: '100vh' },
+  pageMobile:{ flexDirection: 'column' },
   left:      { flex: 1, background: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60 },
+  leftMobile:{ flex: 'none', padding: '28px 22px', alignItems: 'flex-start' },
   leftInner: { maxWidth: 400 },
   brand:     { fontFamily: 'Playfair Display, serif', fontSize: 26, fontWeight: 800, color: '#fff', marginBottom: 40 },
   tagline:   { fontFamily: 'Playfair Display, serif', fontSize: 44, fontWeight: 700, color: '#fff', lineHeight: 1.2, marginBottom: 20 },
+  taglineMobile:{ fontSize: 30, marginBottom: 0 },
   desc:      { color: '#9ca3af', fontSize: 15, lineHeight: 1.7 },
   right:     { width: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, background: '#f5f2ee' },
+  rightMobile:{ width: '100%', flex: 1, alignItems: 'flex-start', padding: 20 },
   formBox:   { width: '100%', maxWidth: 400, background: '#fff', borderRadius: 16, padding: 36, boxShadow: '0 4px 24px rgba(0,0,0,0.08)' },
+  formBoxMobile:{ maxWidth: 'none', padding: 24, borderRadius: 12 },
   formTitle: { fontFamily: 'Playfair Display, serif', fontSize: 26, fontWeight: 700, marginBottom: 6 },
   label:     { display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 6 },
 }

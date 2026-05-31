@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import { ItemIcon } from '../components/ItemIcon.jsx'
 import { Toast, useToast } from '../components/Toast.jsx'
+import { useIsNarrow } from '../hooks/useMediaQuery.js'
 
 function timeAgo(ts) {
   if (!ts) return ''
@@ -25,6 +26,7 @@ export default function Dashboard() {
   const [search, setSearch] = useState('')
   const { toast, showToast } = useToast()
   const navigate = useNavigate()
+  const isNarrow = useIsNarrow()
 
   // Get name from token
   const getName = () => {
@@ -61,11 +63,11 @@ export default function Dashboard() {
           {/* Header */}
           <div style={s.header}>
             <div>
-              <h1 style={s.welcome}>Welcome back, {getName().split(' ')[0]}</h1>
+              <h1 style={{ ...s.welcome, ...(isNarrow ? s.welcomeMobile : {}) }}>Welcome back, {getName().split(' ')[0]}</h1>
               <p style={{ color: '#6b7280', marginTop: 6 }}>Here's the latest status of your personal archive.</p>
             </div>
-            <div style={s.headerRight}>
-              <div style={s.searchBar}>
+            <div style={{ ...s.headerRight, ...(isNarrow ? s.headerRightMobile : {}) }}>
+              <div style={{ ...s.searchBar, ...(isNarrow ? s.searchBarMobile : {}) }}>
                 <svg width="16" height="16" fill="none" stroke="#9ca3af" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
                   <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
                 </svg>
@@ -83,9 +85,9 @@ export default function Dashboard() {
           </div>
 
           {/* Main grid */}
-          <div style={s.mainGrid}>
+          <div style={{ ...s.mainGrid, ...(isNarrow ? s.mainGridMobile : {}) }}>
             {/* Stats card */}
-            <div className="card" style={s.statsCard}>
+            <div className="card" style={{ ...s.statsCard, ...(isNarrow ? s.statsCardMobile : {}) }}>
               <div style={s.statsTitle}>
                 <svg width="18" height="18" fill="none" stroke="#1a6b52" strokeWidth="2" viewBox="0 0 24 24">
                   <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
@@ -134,7 +136,7 @@ export default function Dashboard() {
                   <button className="btn-primary" onClick={() => navigate('/add')}>+ Log first item</button>
                 </div>
               ) : (
-                <div style={s.recentGrid}>
+                <div style={{ ...s.recentGrid, ...(isNarrow ? s.recentGridMobile : {}) }}>
                   {recent.map((item, i) => (
                     <div key={i} className="card" style={s.recentCard}>
                       <div style={s.recentCardTop}>
@@ -166,17 +168,23 @@ export default function Dashboard() {
 const s = {
   header:      { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 40, flexWrap: 'wrap', gap: 16 },
   welcome:     { fontFamily: 'Playfair Display, serif', fontSize: 36, fontWeight: 700 },
+  welcomeMobile:{ fontSize: 28, lineHeight: 1.2 },
   headerRight: { display: 'flex', alignItems: 'center', gap: 12 },
+  headerRightMobile:{ width: '100%', flexDirection: 'column', alignItems: 'stretch' },
   searchBar:   { display: 'flex', alignItems: 'center', gap: 8, background: '#fff', border: '1.5px solid #e5e0da', borderRadius: 8, padding: '8px 14px', minWidth: 220 },
+  searchBarMobile:{ minWidth: 0, width: '100%' },
   searchInput: { border: 'none', background: 'transparent', padding: 0, fontSize: 14, outline: 'none', width: '100%' },
   mainGrid:    { display: 'flex', gap: 32, alignItems: 'flex-start' },
+  mainGridMobile:{ flexDirection: 'column', gap: 22 },
   statsCard:   { width: 280, flexShrink: 0, padding: 28 },
+  statsCardMobile:{ width: '100%' },
   statsTitle:  { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24 },
   statLabel:   { fontSize: 12, color: '#6b7280', marginBottom: 4 },
   statNum:     { fontFamily: 'Playfair Display, serif', fontSize: 52, fontWeight: 700, lineHeight: 1, color: '#1a1a1a' },
   recentHeader:{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   sectionTitle:{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700 },
   recentGrid:  { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
+  recentGridMobile:{ gridTemplateColumns: '1fr' },
   recentCard:  { padding: 20, cursor: 'default' },
   recentCardTop:{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
   itemName:    { fontSize: 17, fontWeight: 600, marginBottom: 6 },

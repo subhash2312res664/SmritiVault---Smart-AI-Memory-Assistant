@@ -1,9 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { logItem } from '../api/index.js'
+import {
+  isOnline, addPendingLog, saveOneItemLocally
+} from '../services/localDB.js'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import { Toast, useToast } from '../components/Toast.jsx'
+import { useIsNarrow } from '../hooks/useMediaQuery.js'
 
 const CATEGORIES = ['Electronics', 'Documents', 'Access', 'Clothing', 'Personal', 'Kitchen', 'Travel', 'Other']
 
@@ -14,16 +18,42 @@ export default function AddItem() {
   const [drag, setDrag]       = useState(false)
   const { toast, showToast }  = useToast()
   const navigate              = useNavigate()
+  const isNarrow              = useIsNarrow()
 
   const handleSubmit = async () => {
     if (!form.item_name.trim()) { showToast('Enter item name', 'error'); return }
-    if (!form.location.trim()) { showToast('Enter location', 'error'); return }
+    if (!form.location.trim())  { showToast('Enter location', 'error'); return }
     setLoading(true)
+
+    const itemData = {
+      item_name: form.item_name.trim(),
+      location:  form.location.trim(),
+      log_type:  'manual',
+    }
+
+    if (!isOnline()) {
+      // ── OFFLINE: save to pending queue + local cache ──
+      try {
+        await addPendingLog(itemData)
+        await saveOneItemLocally({
+          ...itemData,
+          timestamp: new Date().toLocaleString('en-IN'),
+        })
+        if (window.__updatePendingCount) window.__updatePendingCount()
+        showToast('Saved offline — will sync when online!')
+        setTimeout(() => navigate('/items'), 1200)
+      } catch {
+        showToast('Failed to save offline', 'error')
+      } finally { setLoading(false) }
+      return
+    }
+
+    // ── ONLINE: save to server + update local cache ──
     try {
-      const res = await logItem({
-        item_name: form.item_name.trim(),
-        location:  form.location.trim(),
-        log_type:  'manual',
+      const res = await logItem(itemData)
+      await saveOneItemLocally({
+        ...itemData,
+        timestamp: new Date().toLocaleString('en-IN'),
       })
       showToast(res.data.message || 'Item saved!')
       setTimeout(() => navigate('/items'), 1000)
@@ -43,35 +73,36 @@ export default function AddItem() {
       <Navbar active="/add" />
       <Toast toast={toast} />
       <div className="page">
-        <div style={s.container}>
+        <div style={{ ...s.container, ...(isNarrow ? s.containerMobile : {}) }}>
+
           <h1 style={s.title}>Log New Item</h1>
           <p style={s.sub}>Record a new memory into your vault for easy retrieval later.</p>
 
+          {/* Offline notice */}
+          {!isOnline() && (
+            <div style={s.offlineNotice}>
+              📴 You are offline — item will be saved locally and synced when you reconnect.
+            </div>
+          )}
+
           <div style={s.formCard}>
             <div style={s.leftBorder} />
-            <div style={s.formInner}>
+            <div style={{ ...s.formInner, ...(isNarrow ? s.formInnerMobile : {}) }}>
 
-              {/* Item Name */}
               <div style={s.group}>
                 <label style={s.label}>Item Name</label>
-                <input
-                  placeholder="e.g., Car Keys, Passport"
+                <input placeholder="e.g., Car Keys, Passport"
                   value={form.item_name}
-                  onChange={e => setForm({ ...form, item_name: e.target.value })}
-                />
+                  onChange={e => setForm({ ...form, item_name: e.target.value })} />
               </div>
 
-              {/* Location */}
               <div style={s.group}>
                 <label style={s.label}>Location</label>
-                <input
-                  placeholder="e.g., Top Drawer, Hallway Table"
+                <input placeholder="e.g., Top Drawer, Hallway Table"
                   value={form.location}
-                  onChange={e => setForm({ ...form, location: e.target.value })}
-                />
+                  onChange={e => setForm({ ...form, location: e.target.value })} />
               </div>
 
-              {/* Category */}
               <div style={s.group}>
                 <label style={s.label}>Category</label>
                 <div style={{ position: 'relative' }}>
@@ -85,16 +116,12 @@ export default function AddItem() {
                 </div>
               </div>
 
-              {/* Notes */}
               <div style={s.group}>
                 <label style={s.label}>Notes <span style={{ color: '#9ca3af', fontWeight: 400 }}>(Optional)</span></label>
-                <textarea
-                  rows={4}
-                  placeholder="Add any specific details or context..."
+                <textarea rows={3} placeholder="Add any details..."
                   value={form.notes}
                   onChange={e => setForm({ ...form, notes: e.target.value })}
-                  style={{ resize: 'vertical' }}
-                />
+                  style={{ resize: 'vertical' }} />
               </div>
 
               {/* Photo upload */}
@@ -115,25 +142,22 @@ export default function AddItem() {
                       <svg width="28" height="28" fill="none" stroke="#1a6b52" strokeWidth="1.5" viewBox="0 0 24 24">
                         <path d="M14.5 4h-5L7 7H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2h-3l-2.5-3z"/>
                         <circle cx="12" cy="13" r="3"/>
-                        <path d="M12 7v1" strokeLinecap="round"/>
                       </svg>
                     </div>
                     <div style={s.photoTitle}>Upload Photo</div>
-                    <div style={s.photoHint}>Future AI detection feature. Drag and drop or click to browse.</div>
+                    <div style={s.photoHint}>Future AI detection. Drag & drop or click.</div>
                   </>
                 )}
               </div>
 
               <hr style={s.divider} />
 
-              {/* Actions */}
-              <div style={s.actions}>
+              <div style={{ ...s.actions, ...(isNarrow ? s.actionsMobile : {}) }}>
                 <button className="btn-outline" onClick={() => navigate(-1)}>Cancel</button>
-                <button className="btn-primary" style={{ minWidth: 120 }} onClick={handleSubmit} disabled={loading}>
-                  {loading ? <span className="spinner" /> : 'Save Item'}
+                <button className="btn-primary" style={{ minWidth: 130 }} onClick={handleSubmit} disabled={loading}>
+                  {loading ? <span className="spinner" /> : isOnline() ? 'Save Item' : '💾 Save Offline'}
                 </button>
               </div>
-
             </div>
           </div>
         </div>
@@ -144,27 +168,26 @@ export default function AddItem() {
 }
 
 const s = {
-  container:    { maxWidth: 720, margin: '0 auto', padding: '40px 24px' },
-  title:        { fontFamily: 'Playfair Display, serif', fontSize: 28, fontWeight: 700, marginBottom: 6 },
-  sub:          { color: '#6b7280', fontSize: 14, marginBottom: 32 },
-  formCard:     { background: '#fff', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', display: 'flex', overflow: 'hidden' },
-  leftBorder:   { width: 5, background: '#1a6b52', flexShrink: 0 },
-  formInner:    { flex: 1, padding: 36 },
-  group:        { marginBottom: 22 },
-  label:        { display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 8 },
-  selectArrow:  { position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' },
-  photoBox:     {
-    border: '2px dashed #d1ccc5', borderRadius: 10,
-    padding: '36px 20px', textAlign: 'center',
-    cursor: 'pointer', transition: 'all 0.2s',
-    background: '#fafaf8', marginBottom: 8,
-  },
-  photoBoxDrag: { borderColor: '#1a6b52', background: '#e8f4ef' },
+  container:     { maxWidth: 720, margin: '0 auto', padding: '40px 24px' },
+  containerMobile:{ padding: '28px 16px' },
+  title:         { fontFamily: 'Playfair Display, serif', fontSize: 28, fontWeight: 700, marginBottom: 6 },
+  sub:           { color: '#6b7280', fontSize: 14, marginBottom: 24 },
+  offlineNotice: { background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 8, padding: '10px 16px', fontSize: 13, color: '#92400e', marginBottom: 20 },
+  formCard:      { background: '#fff', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', display: 'flex', overflow: 'hidden' },
+  leftBorder:    { width: 5, background: '#1a6b52', flexShrink: 0 },
+  formInner:     { flex: 1, padding: 36 },
+  formInnerMobile:{ padding: 22 },
+  group:         { marginBottom: 22 },
+  label:         { display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 8 },
+  selectArrow:   { position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' },
+  photoBox:      { border: '2px dashed #d1ccc5', borderRadius: 10, padding: '36px 20px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s', background: '#fafaf8', marginBottom: 8 },
+  photoBoxDrag:  { borderColor: '#1a6b52', background: '#e8f4ef' },
   photoBoxFilled:{ border: '2px solid #1a6b52', padding: 8 },
-  photoIcon:    { width: 52, height: 52, borderRadius: '50%', background: '#e8f4ef', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' },
-  photoTitle:   { fontWeight: 600, fontSize: 15, marginBottom: 4 },
-  photoHint:    { color: '#9ca3af', fontSize: 13 },
-  photoPreview: { width: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 8 },
-  divider:      { border: 'none', borderTop: '1px solid #f0ede8', margin: '24px 0' },
-  actions:      { display: 'flex', justifyContent: 'flex-end', gap: 12 },
+  photoIcon:     { width: 52, height: 52, borderRadius: '50%', background: '#e8f4ef', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' },
+  photoTitle:    { fontWeight: 600, fontSize: 15, marginBottom: 4 },
+  photoHint:     { color: '#9ca3af', fontSize: 13 },
+  photoPreview:  { width: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 8 },
+  divider:       { border: 'none', borderTop: '1px solid #f0ede8', margin: '24px 0' },
+  actions:       { display: 'flex', justifyContent: 'flex-end', gap: 12 },
+  actionsMobile: { flexDirection: 'column-reverse' },
 }
