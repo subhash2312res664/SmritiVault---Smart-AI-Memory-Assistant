@@ -46,32 +46,57 @@ Smart_Memory_Assistant/
 │   │   ├── auth.py
 │   │   ├── auth_routes.py
 │   │   ├── database.py
+|   |   ├── detect_route.py
+|   |   ├── history_route.py
+|   |   ├── live_detect_route.py
 │   │   ├── main.py
 │   │   ├── models.py
 │   │   └── routes.py
 │   │
+|   ├── venv/
+|   ├── .env
 │   ├── requirements.txt
-│   └── .env
+│   └── yolov8n.pt
 │
 ├── frontend/
+|   ├── dist/
+|   |   ├── assets/
+|   |   |    ├── index-gnPv317v.js
+|   |   |    └── index-uwzIEaTH.css
+|   |   |
+|   |   └── index.html
+|   |   
+|   ├── node_modules/
+|   |  
 |   ├── src/
-|   |   ├── api
+|   |   ├── api/
 |   |   |   └── index.js
 |   |   |
-|   |   ├── components
+|   |   ├── components/
 |   |   |   ├── Footer.jsx
 |   |   |   ├── ItemIcon.jsx
 |   |   |   ├── Navbar.jsx
+|   |   |   ├── OfflineBanner.jsx
 |   |   |   └── Toast.jsx
 |   |   |
-|   |   ├── pages
+|   |   ├── hooks/
+|   |   |   └── useMediaQuery.js
+|   |   |
+|   |   ├── pages/
 |   |   |   ├── AddItem.jsx
+|   |   |   ├── Camera.jsx
 |   |   |   ├── Dashboard.jsx
+|   |   |   ├── ItemHistory.jsx
+|   |   |   ├── LiveCamera.jsx
 |   |   |   ├── Login.jsx
 |   |   |   ├── MyItems.jsx
 |   |   |   ├── Register.jsx
 |   |   |   └── Search.jsx
 |   |   |
+|   |   ├── Services/
+|   |   |   ├── localDB.js
+|   |   |   └── syncService.js
+|   |   ├── {pages,components,api}
 |   |   ├── App.jsx
 |   |   ├── index.css
 |   |   └── main.jsx
@@ -81,6 +106,7 @@ Smart_Memory_Assistant/
 │   ├── package.json
 │   └── vite.config.js
 ├── docs/
+├── LICENSE
 ├── .gitignore
 └── README.md
 ```
@@ -92,8 +118,8 @@ Smart_Memory_Assistant/
 ### 🔹 1. Clone Repository
 
 ```id="c7j3kd"
-git clone <https://github.com/subhash2312res664/SmritiVault---Smart-AI-Memory-Assistant>
-cd Smart_Memory_Assistant
+git clone https://github.com/subhash2312res664/SmritiVault---Smart-AI-Memory-Assistant
+cd project-name
 ```
 
 ---
